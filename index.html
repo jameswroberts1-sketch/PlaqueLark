@@ -149,18 +149,40 @@
                 return sorted;
             },
             generateMapsUrl: (plaques) => {
-                if (!plaques.length) return '';
-                const baseUrl = "https://www.google.com/maps/dir/?api=1";
-                const getLoc = (p) => (p.address && p.address.length > 5) ? encodeURIComponent(p.address.trim()) : `${p.latitude},${p.longitude}`;
-                
-                const origin = getLoc(plaques[0]);
-                const dest = getLoc(plaques[plaques.length - 1]);
-                const waypoints = plaques.slice(1, -1).map(p => getLoc(p)).join('|');
-                
-                let url = `${baseUrl}&origin=${origin}&destination=${dest}&travelmode=walking`;
-                if (waypoints) url += `&waypoints=${waypoints}`;
-                return url;
-            }
+    if (!plaques.length) return '';
+
+    const baseUrl = "https://www.google.com/maps/dir/?api=1";
+
+    const getLoc = (p) =>
+        (p.address && p.address.length > 5)
+            ? encodeURIComponent(p.address.trim())
+            : `${p.latitude},${p.longitude}`;
+
+    // --- Decide origin based on how the tour was created ---
+    let origin;
+    let waypointPlaques;
+
+    if (state.locationMethod === 'GPS' && state.userLocation) {
+        // User chose "Current GPS" – start from their actual location
+        origin = `${state.userLocation.latitude},${state.userLocation.longitude}`;
+        // Visit all plaques in order, ending at the last one
+        waypointPlaques = plaques.slice(0, -1); // all except final
+    } else {
+        // User used a manual address or we don't have a userLocation:
+        // assume they'll make their own way to plaque #1
+        origin = getLoc(plaques[0]);
+        // Only plaques between first and last are waypoints
+        waypointPlaques = plaques.slice(1, -1);
+    }
+
+    const dest = getLoc(plaques[plaques.length - 1]);
+    const waypoints = waypointPlaques.map(p => getLoc(p)).join('|');
+
+    let url = `${baseUrl}&origin=${origin}&destination=${dest}&travelmode=walking`;
+    if (waypoints) url += `&waypoints=${waypoints}`;
+
+    return url;
+}
         };
 
         // --- Services: API ---
@@ -450,47 +472,42 @@
             },
 
             render: () => {
-                const root = document.getElementById('app');
-                
-                // Error Banner
-                let html = '';
-                if (state.error) {
-                    html += `
-                    <div class="mb-6 mt-4 bg-red-50 border-l-4 border-red-500 p-4 rounded-r-lg">
-                        <div class="flex">
-                            <div class="ml-3"><p class="text-sm text-red-700">${state.error}</p></div>
-                        </div>
-                    </div>`;
-                }
+    const root = document.getElementById('app');
+    let html = '';
 
-                if (state.view === 'HOME') {
-                    html += app.renderHome();
-                } else if (state.view === 'TOUR') {
-                    html += app.renderTour();
-                } else if (state.view === 'FAVORITES') {
-                    html += app.renderFavorites();
-                }
+    if (state.error) {
+        html += `...`;
+    }
 
-                root.innerHTML = html;
+    if (state.view === 'HOME') {
+        html += app.renderHome();
+    } else if (state.view === 'TOUR') {
+        html += app.renderTour();
+    } else if (state.view === 'FAVORITES') {
+        html += app.renderFavorites();
+    }
 
-                // Post-render: Add specific listeners for sliders if needed or just rely on inline events
-                if (state.view === 'TOUR') {
-                    // Trigger bio fetch for all cards
-                    state.activeTour.forEach(p => {
-                        if (p.wikipediaUrl) {
-                            Api.fetchWikiBio(p.wikipediaUrl).then(bio => {
-                                const el = document.getElementById(`bio-${p.id}`);
-                                if (el) {
-                                    el.innerText = bio.substring(0, 300) + '...';
-                                    const link = document.getElementById(`link-${p.id}`);
-                                    if(link) link.style.display = 'inline';
-                                }
-                            });
-                        }
-                    });
-                }
-            },
+    root.innerHTML = html;
 
+    if (state.view === 'TOUR') {
+        // Ensure Maps + Save action bar is rendered
+        app.updateActionBar();
+
+        // Existing bio prefetch logic
+        state.activeTour.forEach(p => {
+            if (p.wikipediaUrl) {
+                Api.fetchWikiBio(p.wikipediaUrl).then(bio => {
+                    const el = document.getElementById(`bio-${p.id}`);
+                    if (el) {
+                        el.innerText = bio.substring(0, 300) + '...';
+                        const link = document.getElementById(`link-${p.id}`);
+                        if (link) link.style.display = 'inline';
+                    }
+                });
+            }
+        });
+    }
+}
             renderHome: () => {
                 return `
                 <div class="w-full max-w-md mx-auto bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100 mt-0">
@@ -575,7 +592,6 @@
                     <div id="action-bar" class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 shadow-[0_-5px_10px_rgba(0,0,0,0.05)] z-10 flex flex-col gap-3">
                         ${/* Initial render of action bar */ ''}
                     </div>
-                    <script>setTimeout(app.updateActionBar, 0)<\/script>
                 </div>
                 `;
             },
