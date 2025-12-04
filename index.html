@@ -153,25 +153,25 @@
 
     const baseUrl = "https://www.google.com/maps/dir/?api=1";
 
-    const getLoc = (p) =>
-        (p.address && p.address.length > 5)
-            ? encodeURIComponent(p.address.trim())
-            : `${p.latitude},${p.longitude}`;
+    const getLoc = (p) => {
+        const hasCoords =
+            Number.isFinite(p.latitude) &&
+            Number.isFinite(p.longitude);
 
-    // --- Decide origin based on how the tour was created ---
+        if (hasCoords) {
+            return `${p.latitude},${p.longitude}`;
+        }
+        return encodeURIComponent((p.address || '').trim());
+    };
+
     let origin;
     let waypointPlaques;
 
     if (state.locationMethod === 'GPS' && state.userLocation) {
-        // User chose "Current GPS" – start from their actual location
         origin = `${state.userLocation.latitude},${state.userLocation.longitude}`;
-        // Visit all plaques in order, ending at the last one
-        waypointPlaques = plaques.slice(0, -1); // all except final
+        waypointPlaques = plaques.slice(0, -1);
     } else {
-        // User used a manual address or we don't have a userLocation:
-        // assume they'll make their own way to plaque #1
         origin = getLoc(plaques[0]);
-        // Only plaques between first and last are waypoints
         waypointPlaques = plaques.slice(1, -1);
     }
 
