@@ -442,6 +442,28 @@
     app.render();
 },
 
+   removeSelectedNoReplacement: () => {
+    const idsToRemove = Array.from(state.selectedForRemoval);
+    if (!idsToRemove.length) return;
+
+    const removedSet = new Set(idsToRemove);
+
+    // Remove those plaques from the current tour
+    let newTour = state.activeTour.filter(p => !removedSet.has(p.id));
+
+    // Update the requested stop count to match reality
+    state.stops = newTour.length;
+
+    // Re-optimise if there’s more than one stop left
+    if (state.userLocation && newTour.length > 1) {
+        newTour = Geo.optimizeRoute(state.userLocation, newTour);
+    }
+
+    state.activeTour = newTour;
+    state.selectedForRemoval = new Set();
+    app.render();
+},         
+
             // Logic: Audio
     speak: (plaqueId) => {
     const plaque = state.activeTour.find(p => p.id === plaqueId);
@@ -557,34 +579,48 @@
             // --- Render Functions ---
 
             updateActionBar: () => {
-                const bar = document.getElementById('action-bar');
-                if (!bar) return;
-                const count = state.selectedForRemoval.size;
-                const canSwap = state.candidatePlaques.length > state.activeTour.length;
-                
-                if (count > 0) {
-                    bar.innerHTML = `
-                        <div class="max-w-md mx-auto w-full">
-                           <button onclick="app.regenerateSelected()" ${!canSwap ? 'disabled' : ''} class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 shadow-md transition-colors animate-bounce-short">
-                             ${Icons.Refresh} Regenerate ${count} Selected
-                           </button>
-                           ${!canSwap ? '<p class="text-xs text-red-500 text-center mt-1">No replacements available.</p>' : ''}
-                        </div>
-                    `;
-                } else {
-                    const mapsUrl = Geo.generateMapsUrl(state.activeTour);
-                    bar.innerHTML = `
-                        <div class="max-w-md mx-auto w-full space-y-2">
-                             <a href="${mapsUrl}" target="_blank" class="w-full bg-blue-100 hover:bg-blue-200 text-plaque-blue font-bold py-3 rounded-xl flex items-center justify-center gap-2 shadow-sm transition-colors">
-                                ${Icons.MapPin} Open Route in Google Maps
-                             </a>
-                            <button onclick="app.saveTour()" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 shadow-md transition-colors">
-                                ${Icons.Heart(true)} Save to Favorites
-                            </button>
-                        </div>
-                    `;
-                }
-            },
+    const bar = document.getElementById('action-bar');
+    if (!bar) return;
+
+    const count = state.selectedForRemoval.size;
+    const canSwap = state.candidatePlaques.length > state.activeTour.length;
+
+    if (count > 0) {
+        // Some cards are selected → show both options
+        const mapsUrl = Geo.generateMapsUrl(state.activeTour);
+        bar.innerHTML = `
+            <div class="max-w-md mx-auto w-full space-y-2">
+                <button
+                    onclick="app.regenerateSelected()"
+                    ${!canSwap ? 'disabled' : ''}
+                    class="w-full bg-red-600 ${canSwap ? 'animate-bounce-short' : ''} hover:bg-red-700 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 shadow-md transition-colors disabled:opacity-60"
+                >
+                    ${Icons.Refresh} Regenerate ${count} Selected
+                </button>
+                ${!canSwap ? '<p class="text-xs text-red-500 text-center">No alternative plaques nearby to swap in.</p>' : ''}
+                <button
+                    onclick="app.removeSelectedNoReplacement()"
+                    class="w-full bg-white border border-red-500 text-red-600 font-bold py-3 rounded-xl flex items-center justify-center gap-2 shadow-sm transition-colors"
+                >
+                    ${Icons.Trash} Remove Selected from Tour
+                </button>
+            </div>
+        `;
+    } else {
+        // No cards selected – standard Maps + Save buttons
+        const mapsUrl = Geo.generateMapsUrl(state.activeTour);
+        bar.innerHTML = `
+            <div class="max-w-md mx-auto w-full space-y-2">
+                <a href="${mapsUrl}" target="_blank" class="w-full bg-blue-100 hover:bg-blue-200 text-plaque-blue font-bold py-3 rounded-xl flex items-center justify-center gap-2 shadow-sm transition-colors">
+                    ${Icons.MapPin} Open Route in Google Maps
+                </a>
+                <button onclick="app.saveTour()" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 shadow-md transition-colors">
+                    ${Icons.Heart(true)} Save to Favorites
+                </button>
+            </div>
+        `;
+    }
+},
 
             render: () => {
     const root = document.getElementById('app');
