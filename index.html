@@ -474,9 +474,15 @@
             render: () => {
     const root = document.getElementById('app');
     let html = '';
-
     if (state.error) {
-        html += `...`;
+        html += `
+        <div class="mb-6 mt-4 bg-red-50 border-l-4 border-red-500 p-4 rounded-r-lg">
+            <div class="flex">
+                <div class="ml-3">
+                    <p class="text-sm text-red-700">${state.error}</p>
+                </div>
+            </div>
+        </div>`;
     }
 
     if (state.view === 'HOME') {
@@ -507,7 +513,7 @@
             }
         });
     }
-}
+},
             renderHome: () => {
                 return `
                 <div class="w-full max-w-md mx-auto bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100 mt-0">
