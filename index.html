@@ -405,22 +405,42 @@
             },
 
             regenerateSelected: () => {
-                const idsToRemove = Array.from(state.selectedForRemoval);
-                const kept = state.activeTour.filter(p => !idsToRemove.includes(p.id));
-                const currentIds = new Set(state.activeTour.map(p => p.id));
-                const available = state.candidatePlaques.filter(p => !currentIds.has(p.id));
-                
-                const needed = state.stops - kept.length;
-                if (available.length < needed) alert('Not enough alternative locations nearby.');
-                
-                const replacements = available.sort(() => 0.5 - Math.random()).slice(0, needed);
-                let newTour = [...kept, ...replacements];
-                if (state.userLocation) newTour = Geo.optimizeRoute(state.userLocation, newTour);
+    const idsToRemove = Array.from(state.selectedForRemoval);
+    if (!idsToRemove.length) return;
 
-                state.activeTour = newTour;
-                state.selectedForRemoval = new Set();
-                app.render();
-            },
+    // 1. Split current tour into kept vs removed
+    const removedSet = new Set(idsToRemove);
+    const kept = state.activeTour.filter(p => !removedSet.has(p.id));
+
+    // 2. Build a pool of candidates that are NOT in the kept set
+    //    and NOT in the "remove" set – so removed plaques can't reappear
+    const keptIds = new Set(kept.map(p => p.id));
+    const pool = state.candidatePlaques.filter(
+        p => !keptIds.has(p.id) && !removedSet.has(p.id)
+    );
+
+    const needed = state.stops - kept.length;
+
+    // 3. If we can't fully replace everything, don't half-do it
+    if (needed > 0 && pool.length < needed) {
+        alert('Not enough alternative locations nearby to replace all selected plaques. Try reducing the number selected or increasing your radius.');
+        return; // leave the tour unchanged
+    }
+
+    // 4. Pick replacements at random from the pool
+    const replacements = pool.sort(() => 0.5 - Math.random()).slice(0, needed);
+
+    let newTour = [...kept, ...replacements];
+
+    // 5. Re-optimise the route from the user’s start location
+    if (state.userLocation) {
+        newTour = Geo.optimizeRoute(state.userLocation, newTour);
+    }
+
+    state.activeTour = newTour;
+    state.selectedForRemoval = new Set();
+    app.render();
+},
 
             // Logic: Audio
             speak: async (plaqueId) => {
