@@ -124,30 +124,83 @@
                 });
             },
             optimizeRoute: (startLoc, plaques) => {
-                // Nearest Neighbor Algorithm
-                const pool = [...plaques];
-                const sorted = [];
-                let current = startLoc;
+    if (plaques.length <= 2) return plaques;
 
-                while (pool.length > 0) {
-                    let nearestIdx = -1;
-                    let minDist = Infinity;
-                    for (let i = 0; i < pool.length; i++) {
-                        const dist = Geo.calculateDistance(current.latitude, current.longitude, pool[i].latitude, pool[i].longitude);
-                        if (dist < minDist) {
-                            minDist = dist;
-                            nearestIdx = i;
-                        }
-                    }
-                    if (nearestIdx !== -1) {
-                        const next = pool[nearestIdx];
-                        sorted.push(next);
-                        current = { latitude: next.latitude, longitude: next.longitude };
-                        pool.splice(nearestIdx, 1);
-                    } else break;
+    // --- 1. Nearest neighbour initial route (your existing logic) ---
+    const pool = [...plaques];
+    const route = [];
+    let current = { latitude: startLoc.latitude, longitude: startLoc.longitude };
+
+    while (pool.length > 0) {
+        let nearestIdx = -1;
+        let minDist = Infinity;
+        for (let i = 0; i < pool.length; i++) {
+            const dist = Geo.calculateDistance(
+                current.latitude,
+                current.longitude,
+                pool[i].latitude,
+                pool[i].longitude
+            );
+            if (dist < minDist) {
+                minDist = dist;
+                nearestIdx = i;
+            }
+        }
+        const next = pool[nearestIdx];
+        route.push(next);
+        current = { latitude: next.latitude, longitude: next.longitude };
+        pool.splice(nearestIdx, 1);
+    }
+
+    // --- Helpers for 2-opt ---
+    const totalRouteDistance = (r) => {
+        let sum = 0;
+        let prev = { latitude: startLoc.latitude, longitude: startLoc.longitude };
+        for (const p of r) {
+            sum += Geo.calculateDistance(
+                prev.latitude,
+                prev.longitude,
+                p.latitude,
+                p.longitude
+            );
+            prev = p;
+        }
+        return sum;
+    };
+
+    const twoOptSwap = (r, i, k) => {
+        // route[0..i-1] + reversed[i..k] + route[k+1..end]
+        return [
+            ...r.slice(0, i),
+            ...r.slice(i, k + 1).reverse(),
+            ...r.slice(k + 1)
+        ];
+    };
+
+    // --- 2. 2-opt improvement loop ---
+    let improved = true;
+    let bestRoute = route;
+    let bestDistance = totalRouteDistance(bestRoute);
+
+    while (improved) {
+        improved = false;
+
+        for (let i = 0; i < bestRoute.length - 1; i++) {
+            for (let k = i + 1; k < bestRoute.length; k++) {
+                const newRoute = twoOptSwap(bestRoute, i, k);
+                const newDistance = totalRouteDistance(newRoute);
+
+                if (newDistance + 1e-9 < bestDistance) { // tiny epsilon to avoid float noise
+                    bestRoute = newRoute;
+                    bestDistance = newDistance;
+                    improved = true;
                 }
-                return sorted;
-            },
+            }
+        }
+    }
+
+    return bestRoute;
+}
             generateMapsUrl: (plaques) => {
     if (!plaques.length) return '';
 
