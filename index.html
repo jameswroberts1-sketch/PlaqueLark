@@ -443,22 +443,52 @@
 },
 
             // Logic: Audio
-            speak: async (plaqueId) => {
-                const plaque = state.activeTour.find(p => p.id === plaqueId);
-                if (!plaque) return;
-                window.speechSynthesis.cancel();
-                
-                let bio = '';
-                if (plaque.wikipediaUrl) {
-                    bio = await Api.fetchWikiBio(plaque.wikipediaUrl);
-                    // Update DOM with bio if not there
-                    const bioEl = document.getElementById(`bio-${plaqueId}`);
-                    if (bioEl) bioEl.innerText = bio.substring(0, 300) + '...';
-                }
+    speak: (plaqueId) => {
+    const plaque = state.activeTour.find(p => p.id === plaqueId);
+    if (!plaque) return;
 
-                const text = `${plaque.title}. ${plaque.summary}. ${bio ? 'Biography: ' + bio.substring(0, 200) : ''}`;
-                window.speechSynthesis.speak(new SpeechSynthesisUtterance(text));
-            },
+    if (!('speechSynthesis' in window)) {
+        alert('Spoken audio is not supported on this device/browser.');
+        return;
+    }
+
+    // Stop anything currently speaking
+    window.speechSynthesis.cancel();
+
+    // Build the text from data we already have (no async)
+    const baseText = `${plaque.title}. ${plaque.summary || ''}`;
+    const text = baseText.trim();
+    if (!text) {
+        alert('No description available to read for this plaque.');
+        return;
+    }
+
+    const utterance = new SpeechSynthesisUtterance(text);
+
+    // Optional: tweak how it sounds
+    utterance.rate = 0.95;   // slightly slower
+    utterance.pitch = 1.05;  // a touch brighter
+    utterance.volume = 1.0;
+
+    // (Optional) basic logging if you open DevTools
+    utterance.onstart = () => console.log('Speech started');
+    utterance.onend = () => console.log('Speech ended');
+    utterance.onerror = (e) => console.error('Speech error', e);
+
+    // 🔊 Speak immediately – still within the click event
+    window.speechSynthesis.speak(utterance);
+
+    // 🔎 Fetch wiki bio *after* starting speech, just to update the card text
+    if (plaque.wikipediaUrl) {
+        Api.fetchWikiBio(plaque.wikipediaUrl).then(bio => {
+            if (!bio) return;
+            const bioEl = document.getElementById(`bio-${plaque.id}`);
+            if (bioEl) bioEl.innerText = bio.substring(0, 300) + '...';
+            const link = document.getElementById(`link-${plaque.id}`);
+            if (link) link.style.display = 'inline';
+        }).catch(err => console.error('Wiki bio fetch error', err));
+    }
+},
 
             toggleAutoPlay: () => {
                 state.isAutoPlay = !state.isAutoPlay;
