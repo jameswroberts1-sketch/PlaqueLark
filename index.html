@@ -597,8 +597,15 @@
                                 <button type="button" onclick="app.setMethod('MANUAL')" class="flex-1 py-2 text-sm font-medium rounded-md transition-all ${state.locationMethod === 'MANUAL' ? 'bg-white text-plaque-blue shadow-sm' : 'text-gray-500'}">Address / Postcode</button>
                             </div>
                             ${state.locationMethod === 'MANUAL' ? `
-                            <input type="text" placeholder="e.g., Baker Street" value="${state.manualAddress}" oninput="app.setAddress(this.value)" required class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-plaque-blue outline-none">
-                            ` : ''}
+    <input
+        type="text"
+        placeholder="e.g., ${CITIES[state.cityIndex].exampleAddress || 'Baker Street'}"
+        value="${state.manualAddress}"
+        oninput="app.setAddress(this.value)"
+        required
+        class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-plaque-blue outline-none"
+    >
+` : ''}
                         </div>
 
                         <div>
