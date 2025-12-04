@@ -256,15 +256,15 @@
                 const res = await fetch(url);
                 const data = await res.json();
                 return data.map((item, idx) => ({
-                    id: item.id || `plaque-${idx}`,
-                    title: item.title || 'Unknown Title',
-                    category: item.lead_subject_primary_role || item.category || '',
-                    latitude: parseFloat(item.latitude),
-                    longitude: parseFloat(item.longitude),
-                    address: item.address || '',
-                    summary: item.subjects || item.summary || item.inscription || item.description || 'No description available.',
-                    wikipediaUrl: item.lead_subject_wikipedia || null
-                }));
+    id: String(item.id ?? `plaque-${idx}`),   // 🔧 force string IDs
+    title: item.title || 'Unknown Title',
+    category: item.lead_subject_primary_role || item.category || '',
+    latitude: parseFloat(item.latitude),
+    longitude: parseFloat(item.longitude),
+    address: item.address || '',
+    summary: item.subjects || item.summary || item.inscription || item.description || 'No description available.',
+    wikipediaUrl: item.lead_subject_wikipedia || null
+}));
             },
             fetchWikiBio: async (url) => {
                 if (!url) return '';
@@ -405,34 +405,27 @@
             },
 
             regenerateSelected: () => {
-    const idsToRemove = Array.from(state.selectedForRemoval);
+    const idsToRemove = Array.from(state.selectedForRemoval).map(String);
     if (!idsToRemove.length) return;
 
-    // 1. Split current tour into kept vs removed
     const removedSet = new Set(idsToRemove);
-    const kept = state.activeTour.filter(p => !removedSet.has(p.id));
+    const kept = state.activeTour.filter(p => !removedSet.has(String(p.id)));
 
-    // 2. Build a pool of candidates that are NOT in the kept set
-    //    and NOT in the "remove" set – so removed plaques can't reappear
-    const keptIds = new Set(kept.map(p => p.id));
+    const keptIds = new Set(kept.map(p => String(p.id)));
     const pool = state.candidatePlaques.filter(
-        p => !keptIds.has(p.id) && !removedSet.has(p.id)
+        p => !keptIds.has(String(p.id)) && !removedSet.has(String(p.id))
     );
 
     const needed = state.stops - kept.length;
 
-    // 3. If we can't fully replace everything, don't half-do it
     if (needed > 0 && pool.length < needed) {
         alert('Not enough alternative locations nearby to replace all selected plaques. Try reducing the number selected or increasing your radius.');
-        return; // leave the tour unchanged
+        return;
     }
 
-    // 4. Pick replacements at random from the pool
     const replacements = pool.sort(() => 0.5 - Math.random()).slice(0, needed);
-
     let newTour = [...kept, ...replacements];
 
-    // 5. Re-optimise the route from the user’s start location
     if (state.userLocation) {
         newTour = Geo.optimizeRoute(state.userLocation, newTour);
     }
@@ -443,18 +436,15 @@
 },
 
    removeSelectedNoReplacement: () => {
-    const idsToRemove = Array.from(state.selectedForRemoval);
+    const idsToRemove = Array.from(state.selectedForRemoval).map(String);
     if (!idsToRemove.length) return;
 
     const removedSet = new Set(idsToRemove);
 
-    // Remove those plaques from the current tour
-    let newTour = state.activeTour.filter(p => !removedSet.has(p.id));
+    let newTour = state.activeTour.filter(p => !removedSet.has(String(p.id)));
 
-    // Update the requested stop count to match reality
     state.stops = newTour.length;
 
-    // Re-optimise if there’s more than one stop left
     if (state.userLocation && newTour.length > 1) {
         newTour = Geo.optimizeRoute(state.userLocation, newTour);
     }
