@@ -69,6 +69,12 @@
         <!-- Dynamic Content Rendered Here -->
     </main>
 
+    <!-- Bottom Navigation (filled by JS) -->
+    <nav id="bottom-nav"
+         class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200
+                shadow-[0_-4px_10px_rgba(0,0,0,0.04)] z-30">
+    </nav>
+
     <!-- JavaScript Logic -->
     <script>
         // --- Constants ---
@@ -297,6 +303,34 @@
             ArrowLeft: `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" /></svg>`,
             Play: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4"><path fill-rule="evenodd" d="M4.5 5.653c0-1.426 1.529-2.33 2.779-1.643l11.54 6.348c1.295.712 1.295 2.573 0 3.285L7.28 19.991c-1.25.687-2.779-.217-2.779-1.643V5.653Z" clip-rule="evenodd" /></svg>`,
             Flag: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4"><path fill-rule="evenodd" d="M3 2.25a.75.75 0 0 1 .75.75v.54l1.838-.46a9.75 9.75 0 0 1 6.725.738l.108.054a8.25 8.25 0 0 0 5.58.652l3.109-.732a.75.75 0 0 1 .917.81 47.784 47.784 0 0 0 .005 10.337.75.75 0 0 1-.574.812l-3.114.733a9.75 9.75 0 0 1-6.594-.158l-.108-.054a8.25 8.25 0 0 0-5.69-.625l-2.202.55V21a.75.75 0 0 1-1.5 0V3A.75.75 0 0 1 3 2.25Z" clip-rule="evenodd" /></svg>`
+
+            HomeTab: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"
+                            fill="none" stroke="currentColor" stroke-width="1.5"
+                            class="w-5 h-5">
+                          <path stroke-linecap="round" stroke-linejoin="round"
+                                d="M2.25 12l9.193-8.308a.75.75 0 0 1 1.014 0L21.75 12M4.5 10.5v9.75A1.5 1.5 0 0 0 6 21.75h12a1.5 1.5 0 0 0 1.5-1.5v-9.75" />
+                       </svg>`,
+
+            GuideTab: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"
+                             fill="none" stroke="currentColor" stroke-width="1.5"
+                             class="w-5 h-5">
+                           <path stroke-linecap="round" stroke-linejoin="round"
+                                 d="M4.5 5.25A2.25 2.25 0 0 1 6.75 3h10.5A2.25 2.25 0 0 1 19.5 5.25v13.5L15 16.5l-4.5 2.25L6 16.5l-1.5 2.25z" />
+                       </svg>`,
+
+            ColoursTab: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"
+                               fill="none" stroke="currentColor" stroke-width="1.5"
+                               class="w-5 h-5">
+                             <path stroke-linecap="round" stroke-linejoin="round"
+                                   d="M15.75 3.75a6.75 6.75 0 0 1 0 13.5h-1.086a1.5 1.5 0 0 0-1.06.44l-2.707 2.707A.75.75 0 0 1 9 19.69v-2.44a1.5 1.5 0 0 0-1.5-1.5A4.5 4.5 0 0 1 3 11.25 7.5 7.5 0 0 1 10.5 3.75h5.25z" />
+                       </svg>`,
+
+            FavsTab: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"
+                            fill="none" stroke="currentColor" stroke-width="1.5"
+                            class="w-5 h-5">
+                          <path stroke-linecap="round" stroke-linejoin="round"
+                                d="M11.48 3.499a.75.75 0 0 1 1.04 0l2.122 2.122 3.004.437a.75.75 0 0 1 .416 1.28l-2.173 2.119.513 3a.75.75 0 0 1-1.088.791L12 12.97l-2.714 1.427a.75.75 0 0 1-1.088-.79l.513-3-2.173-2.12a.75.75 0 0 1 .416-1.279l3.004-.437z" />
+                       </svg>`,
         };
 
 // --- Application Controller ---
@@ -651,9 +685,13 @@ const app = {
         html += app.renderTour();
     } else if (state.view === 'FAVORITES') {
         html += app.renderFavorites();
+    } else if (state.view === 'GUIDE') {
+        html += app.renderGuide();
+    } else if (state.view === 'COLOURS') {
+        html += app.renderColours();
     }
 
-    root.innerHTML = html;
+        root.innerHTML = html;
 
     if (state.view === 'TOUR') {
         // Ensure Maps + Save action bar is rendered
@@ -673,8 +711,50 @@ const app = {
             }
         });
     }
+
+    // Always refresh bottom navigation
+    app.renderNav();
 },
-            renderHome: () => {
+
+                renderNav: () => {
+                const nav = document.getElementById('bottom-nav');
+                if (!nav) return;
+
+                // Treat TOUR as part of the "New tour" tab for highlighting
+                const logicalView =
+                    state.view === 'TOUR' ? 'HOME' : state.view;
+
+                const tabClass = (view) =>
+                    'flex flex-col items-center flex-1 py-2 text-xs font-medium transition-colors ' +
+                    (logicalView === view
+                        ? 'text-plaque-blue'
+                        : 'text-gray-400');
+
+                nav.innerHTML = `
+                    <div class="max-w-2xl mx-auto px-4">
+                        <div class="flex justify-between items-center">
+                            <button onclick="app.setView('HOME')" class="${tabClass('HOME')}">
+                                <span class="mb-1">${Icons.HomeTab}</span>
+                                <span>New tour</span>
+                            </button>
+                            <button onclick="app.setView('GUIDE')" class="${tabClass('GUIDE')}">
+                                <span class="mb-1">${Icons.GuideTab}</span>
+                                <span>Guide</span>
+                            </button>
+                            <button onclick="app.setView('COLOURS')" class="${tabClass('COLOURS')}">
+                                <span class="mb-1">${Icons.ColoursTab}</span>
+                                <span>Plaques</span>
+                            </button>
+                            <button onclick="app.setView('FAVORITES')" class="${tabClass('FAVORITES')}">
+                                <span class="mb-1">${Icons.FavsTab}</span>
+                                <span>Saved</span>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            },
+    
+    renderHome: () => {
                 return `
                 <div class="w-full max-w-md mx-auto bg-white rounded-2xl shadow-xl overflow-hidden border border-gray-100 mt-0">
                     <form onsubmit="app.generateTour(event)" class="p-6 space-y-6">
@@ -762,7 +842,7 @@ const app = {
                         ${state.activeTour.map((p, i) => app.renderCard(p, i, state.activeTour.length)).join('')}
                     </div>
 
-                    <div id="action-bar" class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 shadow-[0_-5px_10px_rgba(0,0,0,0.05)] z-10 flex flex-col gap-3">
+                    <div id="action-bar" class="fixed bottom-16 left-0 right-0 bg-white border-t border-gray-200 p-4 shadow-[0_-5px_10px_rgba(0,0,0,0.05)] z-10 flex flex-col gap-3">
                         ${/* Initial render of action bar */ ''}
                     </div>
                 </div>
@@ -856,6 +936,110 @@ const app = {
                         </div>
                     `}
                 </div>`;
+            },
+    
+                renderGuide: () => {
+                return `
+                <div class="max-w-md mx-auto bg-white rounded-2xl shadow-md p-6 space-y-4 mt-4">
+                    <h2 class="text-xl font-bold text-gray-900">How PlaqueLark works</h2>
+                    <p class="text-sm text-gray-700">
+                        PlaqueLark helps you build short, walkable tours of historic plaques
+                        around a starting point you choose.
+                    </p>
+
+                    <h3 class="text-sm font-semibold text-gray-900 mt-3">1. Pick a city</h3>
+                    <p class="text-sm text-gray-700">
+                        Choose from the cities in the list. Each city has its own set of
+                        plaques and suggested example streets you can search around.
+                    </p>
+
+                    <h3 class="text-sm font-semibold text-gray-900 mt-3">2. Choose where to start</h3>
+                    <p class="text-sm text-gray-700">
+                        <strong>Current Location</strong> is ideal when you are already out
+                        in the city and want the tour to begin where you are standing.
+                        <br/><br/>
+                        <strong>Address / Postcode</strong> is useful when you are planning
+                        ahead, meeting friends somewhere specific, or want to centre the walk
+                        on a station, square, or landmark.
+                    </p>
+
+                    <h3 class="text-sm font-semibold text-gray-900 mt-3">3. Fine-tune your walk</h3>
+                    <p class="text-sm text-gray-700">
+                        Use the <strong>Radius</strong> slider to decide how far PlaqueLark
+                        should look for plaques around your starting point, and
+                        <strong>Stops</strong> to choose how many plaques you’d like to visit.
+                        You can also type a <strong>Category / Role</strong> such as
+                        “musician”, “writer” or “scientist” if you want a themed walk.
+                    </p>
+
+                    <h3 class="text-sm font-semibold text-gray-900 mt-3">4. Explore and tweak</h3>
+                    <p class="text-sm text-gray-700">
+                        Tap <strong>Generate Walking Tour</strong> to see your route.
+                        You can mark any stop as <strong>Remove</strong> to swap it for
+                        another nearby plaque, or remove it altogether if you want a shorter tour.
+                    </p>
+
+                    <h3 class="text-sm font-semibold text-gray-900 mt-3">5. Walk the route</h3>
+                    <p class="text-sm text-gray-700">
+                        Use the cards to read about each plaque, tap
+                        <strong>Listen</strong> for spoken audio, and use
+                        <strong>Open Route in Google Maps</strong> for turn-by-turn directions.
+                        When you’re happy with a tour, save it so you can repeat it or share
+                        it with others.
+                    </p>
+                </div>
+                `;
+            },
+
+            renderColours: () => {
+                return `
+                <div class="max-w-md mx-auto bg-white rounded-2xl shadow-md p-6 space-y-4 mt-4">
+                    <h2 class="text-xl font-bold text-gray-900">Understanding plaque colours</h2>
+                    <p class="text-sm text-gray-700">
+                        Different organisations use different coloured plaques to mark
+                        people, events and buildings of interest. Colours vary by city, but
+                        this rough guide helps you make sense of what you see.
+                    </p>
+
+                    <div class="space-y-3 text-sm text-gray-700">
+                        <div>
+                            <h3 class="font-semibold text-plaque-blue">Blue plaques</h3>
+                            <p>
+                                Often used for nationally significant figures or events.
+                                In London, the classic blue plaque is usually associated
+                                with English Heritage.
+                            </p>
+                        </div>
+
+                        <div>
+                            <h3 class="font-semibold text-green-700">Green and other local colours</h3>
+                            <p>
+                                Many boroughs and local societies use their own colours
+                                (green, maroon, brown, black, and others) to celebrate
+                                people and stories that matter locally rather than nationally.
+                            </p>
+                        </div>
+
+                        <div>
+                            <h3 class="font-semibold text-gray-900">The details matter most</h3>
+                            <p>
+                                Regardless of colour, the lettering on the plaque tells you
+                                who or what is being commemorated, and usually why that place
+                                was chosen – a home, workplace, meeting point or key event.
+                            </p>
+                        </div>
+
+                        <div>
+                            <h3 class="font-semibold text-gray-900">PlaqueLark’s role</h3>
+                            <p>
+                                PlaqueLark doesn’t change or standardise colours – it simply
+                                helps you find interesting plaques nearby and string them
+                                together into a walkable story.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                `;
             }
         };
 
