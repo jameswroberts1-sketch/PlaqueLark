@@ -95,7 +95,7 @@
     }
 ];
         const STORAGE_KEY = 'plaque_explorer_saved_tours';
-        const MAX_TOUR_SIZE = 12;
+        const MAX_TOUR_SIZE = 10;
         const AUDIO_TRIGGER_DISTANCE = 0.0062; // ~10 meters in miles
 
         // --- State ---
@@ -117,7 +117,7 @@
             playedPlaques: new Set(), // IDs
             userLocation: null,
             watchId: null,
-            bioCache: {}
+            bioCache: {},
             isPlanned: false,       // manual “plan for later” vs “start now”
             startHint: ''           // e.g. “Baker Street station”
         };
@@ -948,7 +948,7 @@ updateActionBar: () => {
             This tour was set up around
             <span class="font-semibold">${state.startHint}</span>.
             When you’re ready to walk it, make your way towards that area,
-            then tap <strong>“Open Route in Google Maps”</strong> below to
+            then tap <strong>“Start in Google Maps”</strong> below to
             start from where you are.
         </p>
     </div>
@@ -1085,14 +1085,14 @@ updateActionBar: () => {
                     </p>
 
                     <h3 class="text-sm font-semibold text-gray-900 mt-3">2. Choose where to start</h3>
-                    <p class="text-sm text-gray-700">
-                        <strong>Current Location</strong> is ideal when you are already out
-                        in the city and want the tour to begin where you are standing.
-                        <br/><br/>
-                        <strong>Address / Postcode</strong> is useful when you are planning
-                        ahead, meeting friends somewhere specific, or want to centre the walk
-                        on a station, square, or landmark.
-                    </p>
+<p class="text-sm text-gray-700">
+    <strong>Start now (Current location)</strong> is ideal when you are already out
+    in the city and want the tour to begin where you are standing.
+    <br/><br/>
+    <strong>Plan for later (Address)</strong> is useful when you are planning
+    ahead, meeting friends somewhere specific, or want to centre the walk
+    on a station, square, or landmark.
+</p>
 
                     <h3 class="text-sm font-semibold text-gray-900 mt-3">3. Fine-tune your walk</h3>
                     <p class="text-sm text-gray-700">
@@ -1111,13 +1111,14 @@ updateActionBar: () => {
                     </p>
 
                     <h3 class="text-sm font-semibold text-gray-900 mt-3">5. Walk the route</h3>
-                    <p class="text-sm text-gray-700">
-                        Use the cards to read about each plaque, tap
-                        <strong>Listen</strong> for spoken audio, and use
-                        <strong>Open Route in Google Maps</strong> for turn-by-turn directions.
-                        When you’re happy with a tour, save it so you can repeat it or share
-                        it with others.
-                    </p>
+<p class="text-sm text-gray-700">
+    Use the cards to read about each plaque, tap
+    <strong>Listen</strong> for spoken audio, and use
+    <strong>Start in Google Maps</strong> for turn-by-turn directions from
+    wherever you are. If you planned a tour around an address, you can also
+    use <strong>Preview route near planned start</strong> to see how long
+    the walk looks from that area.
+</p>
                 </div>
                 `;
             },
