@@ -94,7 +94,7 @@
 
         // --- State ---
         const state = {
-            view: 'HOME', // HOME, TOUR, FAVORITES
+            view: 'HOME', // HOME, TOUR, FAVORITES, COLOURS, GUIDE
             loading: false,
             error: null,
             cityIndex: 0,
@@ -299,16 +299,35 @@
             Flag: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4"><path fill-rule="evenodd" d="M3 2.25a.75.75 0 0 1 .75.75v.54l1.838-.46a9.75 9.75 0 0 1 6.725.738l.108.054a8.25 8.25 0 0 0 5.58.652l3.109-.732a.75.75 0 0 1 .917.81 47.784 47.784 0 0 0 .005 10.337.75.75 0 0 1-.574.812l-3.114.733a9.75 9.75 0 0 1-6.594-.158l-.108-.054a8.25 8.25 0 0 0-5.69-.625l-2.202.55V21a.75.75 0 0 1-1.5 0V3A.75.75 0 0 1 3 2.25Z" clip-rule="evenodd" /></svg>`
         };
 
-        // --- Application Controller ---
-        const app = {
-            init: () => {
-                app.loadCategories();
-                app.render();
-            },
+// --- Application Controller ---
+const app = {
+    init: () => {
+        app.loadCategories();
+        app.render();
+    },
 
-            // View Switchers
-            goHome: () => { state.view = 'HOME'; app.stopAudioWatch(); app.render(); },
-            goFavorites: () => { state.view = 'FAVORITES'; app.stopAudioWatch(); app.render(); },
+    // Generic view setter (we'll use this for the bottom nav later)
+    setView: (view) => {
+        state.view = view;
+        app.stopAudioWatch();
+        app.render();
+    },
+
+    // View Switchers
+    goHome: () => {
+        // “New Search” – clear current tour and go back to generator
+        state.view = 'HOME';
+        state.activeTour = [];
+        state.selectedForRemoval = new Set();
+        app.stopAudioWatch();
+        app.render();
+    },
+
+    goFavorites: () => {
+        state.view = 'FAVORITES';
+        app.stopAudioWatch();
+        app.render();
+    },
 
             // Update State Actions
             setCity: (idx) => { 
