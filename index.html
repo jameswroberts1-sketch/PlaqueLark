@@ -221,7 +221,7 @@
 
     return bestRoute;
 },
-            generateMapsUrl: (plaques) => {
+generateMapsPreviewUrl: (plaques) => {
     if (!plaques.length) return '';
 
     const baseUrl = "https://www.google.com/maps/dir/?api=1";
@@ -237,21 +237,54 @@
         return encodeURIComponent((p.address || '').trim());
     };
 
-    let origin;
-    let waypointPlaques;
+    const dest = getLoc(plaques[plaques.length - 1]);
 
-    if (state.locationMethod === 'GPS' && state.userLocation) {
-        origin = `${state.userLocation.latitude},${state.userLocation.longitude}`;
-        waypointPlaques = plaques.slice(0, -1);
-    } else {
-        origin = getLoc(plaques[0]);
+    let origin = '';
+    let waypointPlaques = [];
+
+    if (state.locationMethod === 'MANUAL') {
+        // “Planning ahead” – show a route local to the planned hub
+        origin = getLoc(plaques[0]);          // planned start area / first plaque
         waypointPlaques = plaques.slice(1, -1);
+    } else {
+        // GPS mode – user is already in the city, so origin = where they are
+        if (state.userLocation) {
+            origin = `${state.userLocation.latitude},${state.userLocation.longitude}`;
+        }
+        waypointPlaques = plaques.slice(0, -1);
     }
 
-    const dest = getLoc(plaques[plaques.length - 1]);
     const waypoints = waypointPlaques.map(p => getLoc(p)).join('|');
 
-    let url = `${baseUrl}&origin=${origin}&destination=${dest}&travelmode=walking`;
+    let url = `${baseUrl}&destination=${dest}&travelmode=walking`;
+    if (origin) url += `&origin=${origin}`;
+    if (waypoints) url += `&waypoints=${waypoints}`;
+
+    return url;
+},
+
+generateMapsNavUrl: (plaques) => {
+    if (!plaques.length) return '';
+
+    const baseUrl = "https://www.google.com/maps/dir/?api=1";
+
+    const getLoc = (p) => {
+        const hasCoords =
+            Number.isFinite(p.latitude) &&
+            Number.isFinite(p.longitude);
+
+        if (hasCoords) {
+            return `${p.latitude},${p.longitude}`;
+        }
+        return encodeURIComponent((p.address || '').trim());
+    };
+
+    const dest = getLoc(plaques[plaques.length - 1]);
+    const waypointPlaques = plaques.slice(0, -1);
+    const waypoints = waypointPlaques.map(p => getLoc(p)).join('|');
+
+    // IMPORTANT: no origin here → Google uses “Your location”
+    let url = `${baseUrl}&destination=${dest}&travelmode=walking`;
     if (waypoints) url += `&waypoints=${waypoints}`;
 
     return url;
@@ -647,16 +680,16 @@
 
             // --- Render Functions ---
 
-            updateActionBar: () => {
+updateActionBar: () => {
     const bar = document.getElementById('action-bar');
     if (!bar) return;
 
     const count = state.selectedForRemoval.size;
     const canSwap = state.candidatePlaques.length > state.activeTour.length;
+    const isManualPlanningContext = state.view === 'TOUR' && state.locationMethod === 'MANUAL';
 
     if (count > 0) {
-        // Some cards are selected → show both options
-        const mapsUrl = Geo.generateMapsUrl(state.activeTour);
+        // Some cards are selected → show regenerate / remove controls
         bar.innerHTML = `
             <div class="max-w-md mx-auto w-full space-y-2">
                 <button
@@ -676,14 +709,38 @@
             </div>
         `;
     } else {
-        // No cards selected – standard Maps + Save buttons
-        const mapsUrl = Geo.generateMapsUrl(state.activeTour);
+        // No cards selected – map + save controls
+        const navUrl = Geo.generateMapsNavUrl(state.activeTour);
+        const previewUrl = isManualPlanningContext
+            ? Geo.generateMapsPreviewUrl(state.activeTour)
+            : null;
+
+        const previewButtonHtml = previewUrl
+            ? `
+                <a
+                    href="${previewUrl}"
+                    target="_blank"
+                    class="w-full bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 font-bold py-3 rounded-xl flex items-center justify-center gap-2 shadow-sm transition-colors"
+                >
+                    ${Icons.MapPin} Preview route near planned start
+                </a>
+            `
+            : '';
+
         bar.innerHTML = `
             <div class="max-w-md mx-auto w-full space-y-2">
-                <a href="${mapsUrl}" target="_blank" class="w-full bg-blue-100 hover:bg-blue-200 text-plaque-blue font-bold py-3 rounded-xl flex items-center justify-center gap-2 shadow-sm transition-colors">
-                    ${Icons.MapPin} Open Route in Google Maps
+                <a
+                    href="${navUrl}"
+                    target="_blank"
+                    class="w-full bg-blue-100 hover:bg-blue-200 text-plaque-blue font-bold py-3 rounded-xl flex items-center justify-center gap-2 shadow-sm transition-colors"
+                >
+                    ${Icons.MapPin} Start in Google Maps
                 </a>
-                <button onclick="app.saveTour()" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 shadow-md transition-colors">
+                ${previewButtonHtml}
+                <button
+                    onclick="app.saveTour()"
+                    class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 shadow-md transition-colors"
+                >
                     ${Icons.Heart(true)} Save to Favorites
                 </button>
             </div>
