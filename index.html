@@ -850,20 +850,39 @@ updateActionBar: () => {
 
 <div>
     <label class="block text-sm font-medium text-gray-700 mb-2">Start Location</label>
-    <div class="flex bg-gray-100 p-1 rounded-lg mb-3">
+    <div class="flex gap-2 mb-3">
         <button
             type="button"
             onclick="app.setMethod('GPS')"
-            class="flex-1 py-2 text-sm font-medium rounded-md transition-all ${state.locationMethod === 'GPS' ? 'bg-white text-plaque-blue shadow-sm' : 'text-gray-500'}"
+            class="flex-1 py-2 px-3 text-xs font-medium rounded-2xl transition-all shadow-sm ${
+                state.locationMethod === 'GPS'
+                    ? 'bg-plaque-blue text-white'
+                    : 'bg-red-600 text-white'
+            }"
         >
-            Start now (Current location)
+            <span class="block text-sm font-semibold leading-tight">
+                Start now
+            </span>
+            <span class="block text-[0.7rem] leading-tight opacity-80">
+                Current location
+            </span>
         </button>
+
         <button
             type="button"
             onclick="app.setMethod('MANUAL')"
-            class="flex-1 py-2 text-sm font-medium rounded-md transition-all ${state.locationMethod === 'MANUAL' ? 'bg-white text-plaque-blue shadow-sm' : 'text-gray-500'}"
+            class="flex-1 py-2 px-3 text-xs font-medium rounded-2xl transition-all shadow-sm ${
+                state.locationMethod === 'MANUAL'
+                    ? 'bg-plaque-blue text-white'
+                    : 'bg-red-600 text-white'
+            }"
         >
-            Plan for later (Address)
+            <span class="block text-sm font-semibold leading-tight">
+                Plan for later
+            </span>
+            <span class="block text-[0.7rem] leading-tight opacity-80">
+                Choose start point
+            </span>
         </button>
     </div>
 
