@@ -220,40 +220,80 @@
     return bestRoute;
 },
             generateMapsUrl: (plaques) => {
-    if (!plaques.length) return '';
+                if (!plaques.length) return '';
 
-    const baseUrl = "https://www.google.com/maps/dir/?api=1";
+                const baseUrl = "https://www.google.com/maps/dir/?api=1";
 
-    const getLoc = (p) => {
-        const hasCoords =
-            Number.isFinite(p.latitude) &&
-            Number.isFinite(p.longitude);
+                const getLoc = (p) => {
+                    const hasCoords =
+                        Number.isFinite(p.latitude) &&
+                        Number.isFinite(p.longitude);
 
-        if (hasCoords) {
-            return `${p.latitude},${p.longitude}`;
-        }
-        return encodeURIComponent((p.address || '').trim());
-    };
+                    if (hasCoords) {
+                        return `${p.latitude},${p.longitude}`;
+                    }
+                    return encodeURIComponent((p.address || '').trim());
+                };
 
-    let origin;
-    let waypointPlaques;
+                let origin;
+                let waypointPlaques;
 
-    if (state.locationMethod === 'GPS' && state.userLocation) {
-        origin = `${state.userLocation.latitude},${state.userLocation.longitude}`;
-        waypointPlaques = plaques.slice(0, -1);
-    } else {
-        origin = getLoc(plaques[0]);
-        waypointPlaques = plaques.slice(1, -1);
-    }
+                if (state.locationMethod === 'GPS' && state.userLocation) {
+                    origin = `${state.userLocation.latitude},${state.userLocation.longitude}`;
+                    waypointPlaques = plaques.slice(0, -1);
+                } else {
+                    origin = getLoc(plaques[0]);
+                    waypointPlaques = plaques.slice(1, -1);
+                }
 
-    const dest = getLoc(plaques[plaques.length - 1]);
-    const waypoints = waypointPlaques.map(p => getLoc(p)).join('|');
+                const dest = getLoc(plaques[plaques.length - 1]);
+                const waypoints = waypointPlaques.map(p => getLoc(p)).join('|');
 
-    let url = `${baseUrl}&origin=${origin}&destination=${dest}&travelmode=walking`;
-    if (waypoints) url += `&waypoints=${waypoints}`;
+                let url = `${baseUrl}&origin=${origin}&destination=${dest}&travelmode=walking`;
+                if (waypoints) url += `&waypoints=${waypoints}`;
 
-    return url;
-}
+                return url;
+            },
+
+            generateAppleMapsUrl: (plaques) => {
+                if (!plaques.length) return '';
+
+                // Build list of destinations (lat,lng or address string)
+                const locStrings = plaques.map(p => {
+                    if (
+                        Number.isFinite(p.latitude) &&
+                        Number.isFinite(p.longitude)
+                    ) {
+                        return `${p.latitude},${p.longitude}`;
+                    }
+                    return (p.address || '').trim();
+                });
+
+                // Where should directions start from?
+                // If GPS is in use, start from the user's coordinates.
+                // Otherwise, use "Current Location" so Apple Maps asks.
+                let start;
+                if (state.locationMethod === 'GPS' && state.userLocation) {
+                    start = `${state.userLocation.latitude},${state.userLocation.longitude}`;
+                } else {
+                    start = 'Current Location';
+                }
+
+                const [firstDest, ...rest] = locStrings;
+                if (!firstDest) return '';
+
+                // Apple Maps multiple stops: daddr=first to:second to:third...
+                let dest = firstDest;
+                if (rest.length) {
+                    dest += ' to:' + rest.join(' to:');
+                }
+
+                const saddrParam = encodeURIComponent(start);
+                const daddrParam = encodeURIComponent(dest);
+
+                // Web URL works even if Maps app UI behaves slightly differently by device
+                return `maps://?dirflg=w&saddr=${saddrParam}&daddr=${daddrParam}`;
+            }
         };
 
         // --- Services: API ---
@@ -361,6 +401,42 @@ const app = {
         state.view = 'FAVORITES';
         app.stopAudioWatch();
         app.render();
+    },
+
+        // Decide how to open the route based on device and user choice
+    openRoute: () => {
+        if (!state.activeTour.length) return;
+
+        const googleUrl = Geo.generateMapsUrl(state.activeTour);
+
+        // Detect iOS (simple but good enough for our purpose)
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+
+        // Non-iOS: just open Google Maps web as before
+        if (!isIOS) {
+            window.open(googleUrl, '_blank');
+            return;
+        }
+
+        // iOS: let the user choose Apple Maps vs Google Maps
+        const useApple = window.confirm(
+            'Open this route in Apple Maps?\n\n' +
+            'Tap "OK" for Apple Maps, or "Cancel" to use Google Maps instead.'
+        );
+
+        if (useApple) {
+            const appleUrl = Geo.generateAppleMapsUrl(state.activeTour);
+            if (appleUrl) {
+                // On iOS Safari this should hand off to the Maps app or web UI.
+                window.location.href = appleUrl;
+            } else {
+                // Fallback: if something went wrong building Apple URL, fall back to Google web
+                window.open(googleUrl, '_blank');
+            }
+        } else {
+            // User chose Google on iOS – still use web URL so it works even if the app isn't installed
+            window.open(googleUrl, '_blank');
+        }
     },
 
             // Update State Actions
@@ -649,15 +725,20 @@ const app = {
                 </button>
             </div>
         `;
-    } else {
+        } else {
         // No cards selected – standard Maps + Save buttons
-        const mapsUrl = Geo.generateMapsUrl(state.activeTour);
         bar.innerHTML = `
             <div class="max-w-md mx-auto w-full space-y-2">
-                <a href="${mapsUrl}" target="_blank" class="w-full bg-blue-100 hover:bg-blue-200 text-plaque-blue font-bold py-3 rounded-xl flex items-center justify-center gap-2 shadow-sm transition-colors">
-                    ${Icons.MapPin} Open Route in Google Maps
-                </a>
-                <button onclick="app.saveTour()" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 shadow-md transition-colors">
+                <button
+                    onclick="app.openRoute()"
+                    class="w-full bg-blue-100 hover:bg-blue-200 text-plaque-blue font-bold py-3 rounded-xl flex items-center justify-center gap-2 shadow-sm transition-colors"
+                >
+                    ${Icons.MapPin} Open Route
+                </button>
+                <button
+                    onclick="app.saveTour()"
+                    class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 shadow-md transition-colors"
+                >
                     ${Icons.Heart(true)} Save to Favorites
                 </button>
             </div>
