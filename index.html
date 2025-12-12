@@ -107,11 +107,11 @@
             locationMethod: 'GPS', // GPS, MANUAL
             manualAddress: '',
             radius: 1,
-            subjectType: '',          // NEW
-            category: '',
-            stops: 5,
-            availableSubjectTypes: [], // NEW
+            selectedSubjectTypes: new Set(),   // multiple selections
+            selectedCategories: new Set(),     // multiple selections
+            availableSubjectTypes: [],
             availableCategories: [],
+            stops: 5,
             candidatePlaques: [],
             activeTour: [],
             selectedForRemoval: new Set(),
@@ -408,19 +408,18 @@
 
             // Update State Actions
             setCity: (idx) => { 
-                state.cityIndex = idx; 
-                state.category = ''; 
-                state.subjectType = '';
-                app.loadCategories(); 
-                app.render(); 
+            state.cityIndex = idx; 
+            state.selectedSubjectTypes = new Set(); 
+            state.selectedCategories = new Set();
+            app.loadCategories(); 
+            app.render(); 
             },
+            
             setMethod: (method) => { state.locationMethod = method; app.render(); },
             setAddress: (val) => { state.manualAddress = val; },
             setRadius: (val) => { state.radius = parseFloat(val); document.getElementById('radius-val').innerText = val + ' mi'; },
             setStops: (val) => { state.stops = parseInt(val); document.getElementById('stops-val').innerText = val; },
-            setSubjectType: (val) => { state.subjectType = val; },
-            setCategory: (val) => { state.category = val; },
-
+            
             // Logic: Load Categories / Subject Types for Autocomplete
             loadCategories: async () => {
                 const city = CITIES[state.cityIndex];
@@ -436,6 +435,28 @@
                     state.availableCategories = Array.from(catSet).sort();
                     if (state.view === 'HOME') app.render(); 
                 } catch(e) { console.error(e); }
+            },
+
+            toggleSubjectType: (index, checked) => {
+                    const value = state.availableSubjectTypes[index];
+                    if (!value) return;
+
+                    if (checked) {
+                       state.selectedSubjectTypes.add(value);
+                    } else {
+                    state.selectedSubjectTypes.delete(value);
+                 }
+            },
+
+            toggleCategory: (index, checked) => {
+                   const value = state.availableCategories[index];
+                   if (!value) return;
+
+                   if (checked) {
+                   state.selectedCategories.add(value);
+                   } else {
+                   state.selectedCategories.delete(value);
+                 }
             },
 
             // Logic: Generate Tour
@@ -462,20 +483,23 @@
 const all = await Api.fetchPlaques(city.url);
 let filtered = all;
 
-if (state.subjectType.trim()) {
-    const term = state.subjectType.toLowerCase().trim();
+// Multi-select subject types (OR within, AND vs other filters)
+const selectedTypes = Array.from(state.selectedSubjectTypes || []);
+if (selectedTypes.length) {
     filtered = filtered.filter(p =>
-        p.subjectType && p.subjectType.toLowerCase() === term
+        p.subjectType && selectedTypes.includes(p.subjectType)
     );
 }
 
-if (state.category.trim()) {
-    const term = state.category.toLowerCase().trim();
+// Multi-select categories (OR within, AND vs other filters)
+const selectedCats = Array.from(state.selectedCategories || []);
+if (selectedCats.length) {
     filtered = filtered.filter(p =>
-        p.category && p.category.toLowerCase().includes(term)
+        p.category && selectedCats.includes(p.category)
     );
 }
 
+// Now apply radius
 const nearby = filtered.filter(p => 
     Geo.calculateDistance(
         startLoc.latitude,
@@ -919,39 +943,52 @@ const nearby = filtered.filter(p =>
                         </div>
 
                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-2">Filters (Optional)</label>
-                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                <div>
-                                    <label class="block text-xs font-semibold text-gray-500 mb-1">Subject type</label>
-                                    <input
-                                        list="subject-types"
-                                        type="text"
-                                        placeholder="e.g. person, organisation"
-                                        value="${state.subjectType}"
-                                        oninput="app.setSubjectType(this.value)"
-                                        class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-plaque-blue outline-none"
-                                    >
-                                    <datalist id="subject-types">
-                                        ${state.availableSubjectTypes.map(t => `<option value="${t}">`).join('')}
-                                    </datalist>
-                                </div>
-                                <div>
-                                    <label class="block text-xs font-semibold text-gray-500 mb-1">Category</label>
-                                    <input
-                                        list="cats"
-                                        type="text"
-                                        placeholder="e.g. Musician, Poet"
-                                        value="${state.category}"
-                                        oninput="app.setCategory(this.value)"
-                                        class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-plaque-blue outline-none"
-                                    >
-                                    <datalist id="cats">
-                                        ${state.availableCategories.map(c => `<option value="${c}">`).join('')}
-                                    </datalist>
-                                </div>
-                            </div>
-                        </div>
+    <label class="block text-sm font-medium text-gray-700 mb-2">Filters (Optional)</label>
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div>
+            <p class="block text-xs font-semibold text-gray-500 mb-1">Subject type</p>
+            <div class="border border-gray-200 rounded-lg max-h-32 overflow-y-auto px-2 py-2 text-xs space-y-1">
+                ${state.availableSubjectTypes.map((t, i) => `
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input
+                            type="checkbox"
+                            onchange="app.toggleSubjectType(${i}, this.checked)"
+                            ${state.selectedSubjectTypes.has(t) ? 'checked' : ''}
+                            class="w-3.5 h-3.5 text-plaque-blue border-gray-300 rounded focus:ring-plaque-blue"
+                        >
+                        <span class="text-gray-700">${t}</span>
+                    </label>
+                `).join('')}
+                ${state.availableSubjectTypes.length === 0 ? `
+                    <p class="text-[11px] text-gray-400 italic">No subject types found for this city.</p>
+                ` : ''}
+            </div>
+        </div>
 
+        <div>
+            <p class="block text-xs font-semibold text-gray-500 mb-1">Category</p>
+            <div class="border border-gray-200 rounded-lg max-h-32 overflow-y-auto px-2 py-2 text-xs space-y-1">
+                ${state.availableCategories.map((c, i) => `
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input
+                            type="checkbox"
+                            onchange="app.toggleCategory(${i}, this.checked)"
+                            ${state.selectedCategories.has(c) ? 'checked' : ''}
+                            class="w-3.5 h-3.5 text-plaque-blue border-gray-300 rounded focus:ring-plaque-blue"
+                        >
+                        <span class="text-gray-700">${c}</span>
+                    </label>
+                `).join('')}
+                ${state.availableCategories.length === 0 ? `
+                    <p class="text-[11px] text-gray-400 italic">No categories found for this city.</p>
+                ` : ''}
+            </div>
+        </div>
+    </div>
+    <p class="mt-1 text-[11px] text-gray-500">
+        You can tick more than one in each column. Leave everything unticked to include all plaques.
+    </p>
+</div>
                         <div class="flex gap-4">
                             <div class="flex-1">
                                 <div class="flex justify-between items-center mb-2">
@@ -1154,8 +1191,8 @@ const nearby = filtered.filter(p =>
                         <strong>Stops</strong> to choose how many plaques you’d like to visit.
                         You can also optionally filter by <strong>Subject type</strong>
                         (person, organisation, site or event, etc.) and <strong>Category</strong>
-                        (writer, politician, actor, scientist, and so on) using the dropdowns.
-                        Leave either blank to include all types.
+                        (writer, politician, actor, scientist, and so on) using the checkboxes.
+                        Tick as many as you like, or leave them all unticked to include everything.
                     </p>
 
                     <h3 class="text-sm font-semibold text-gray-900 mt-3">4. Explore and tweak</h3>
