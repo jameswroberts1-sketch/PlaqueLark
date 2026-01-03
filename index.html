@@ -305,6 +305,7 @@
                     latitude: parseFloat(item.latitude),
                     longitude: parseFloat(item.longitude),
                     address: item.address || '',
+                    bio: item.lead_subject_bio || '',
                     summary: item.subjects || item.summary || item.inscription || item.description || 'No description available.',
                     wikipediaUrl: item.lead_subject_wikipedia || null
                 }));
@@ -596,45 +597,55 @@ const nearby = filtered.filter(p =>
             },         
 
             // Logic: Audio
-            speak: (plaqueId) => {
-                const plaque = state.activeTour.find(p => p.id === plaqueId);
-                if (!plaque) return;
+           speak: (plaqueId) => {
+    const plaque = state.activeTour.find(p => p.id === plaqueId);
+    if (!plaque) return;
 
-                if (!('speechSynthesis' in window)) {
-                    alert('Spoken audio is not supported on this device/browser.');
-                    return;
-                }
+    if (!('speechSynthesis' in window)) {
+        alert('Spoken audio is not supported on this device/browser.');
+        return;
+    }
 
-                window.speechSynthesis.cancel();
+    // Stop anything currently speaking
+    window.speechSynthesis.cancel();
 
-                const baseText = `${plaque.title}. ${plaque.summary || ''}`;
-                const text = baseText.trim();
-                if (!text) {
-                    alert('No description available to read for this plaque.');
-                    return;
-                }
+    // Prefer lead_subject_bio if it exists AND does NOT look like a URL
+    const bioText = plaque.bio || '';
+    const bioLooksLikeUrl = /https?:\/\/\S+/i.test(bioText);
 
-                const utterance = new SpeechSynthesisUtterance(text);
-                utterance.rate = 0.95;
-                utterance.pitch = 1.05;
-                utterance.volume = 1.0;
+    const bodyText = (!bioLooksLikeUrl && bioText)
+        ? bioText                            // ✅ use plain-text bio
+        : (plaque.summary || '');           // ✅ fall back to inscription/summary
 
-                utterance.onstart = () => console.log('Speech started');
-                utterance.onend = () => console.log('Speech ended');
-                utterance.onerror = (e) => console.error('Speech error', e);
+    const text = `${plaque.title}. ${bodyText}`.trim();
 
-                window.speechSynthesis.speak(utterance);
+    if (!bodyText) {
+        alert('No description available to read for this plaque.');
+        return;
+    }
 
-                if (plaque.wikipediaUrl) {
-                    Api.fetchWikiBio(plaque.wikipediaUrl).then(bio => {
-                        if (!bio) return;
-                        const bioEl = document.getElementById(`bio-${plaque.id}`);
-                        if (bioEl) bioEl.innerText = bio.substring(0, 300) + '...';
-                        const link = document.getElementById(`link-${plaque.id}`);
-                        if (link) link.style.display = 'inline';
-                    }).catch(err => console.error('Wiki bio fetch error', err));
-                }
-            },
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.rate = 0.95;
+    utterance.pitch = 1.05;
+    utterance.volume = 1.0;
+
+    utterance.onstart = () => console.log('Speech started');
+    utterance.onend = () => console.log('Speech ended');
+    utterance.onerror = (e) => console.error('Speech error', e);
+
+    window.speechSynthesis.speak(utterance);
+
+    // Keep your existing wiki-bio fetch for the card
+    if (plaque.wikipediaUrl) {
+        Api.fetchWikiBio(plaque.wikipediaUrl).then(bio => {
+            if (!bio) return;
+            const bioEl = document.getElementById(`bio-${plaque.id}`);
+            if (bioEl) bioEl.innerText = bio.substring(0, 300) + '...';
+            const link = document.getElementById(`link-${plaque.id}`);
+            if (link) link.style.display = 'inline';
+        }).catch(err => console.error('Wiki bio fetch error', err));
+    }
+},
 
             toggleAutoPlay: () => {
                 state.isAutoPlay = !state.isAutoPlay;
