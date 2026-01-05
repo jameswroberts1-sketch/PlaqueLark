@@ -306,7 +306,12 @@
                     longitude: parseFloat(item.longitude),
                     address: item.address || '',
                     bio: item.lead_subject_bio || '',
-                    summary: item.subjects || item.summary || item.inscription || item.description || 'No description available.',
+                    summary:
+                      item.inscription ||
+                      item.summary ||
+                      item.description ||
+                      item.subjects ||
+                      'No description available.',
                     wikipediaUrl: item.lead_subject_wikipedia || null
                 }));
             },
@@ -1082,22 +1087,50 @@ const nearby = filtered.filter(p =>
                 return `
                 <div id="card-${plaque.id}" class="bg-white rounded-xl shadow-md overflow-hidden border-l-4 mb-4 relative group transition-all ${isSel ? 'border-red-500 bg-red-50' : 'border-plaque-blue'}">
                     <div class="p-5">
-                        <div class="flex justify-between items-start mb-2">
-                            <div class="flex gap-2 items-center">
-                                <div class="${bg} text-white w-8 h-8 flex items-center justify-center rounded-full font-bold shadow-sm flex-shrink-0">${badge}</div>
-                                <div class="flex flex-col">
-                                    <span class="text-xs text-gray-400 font-mono uppercase tracking-wide">${label}</span>
-                                    <div class="flex flex-wrap gap-1 mt-1">
-                                        ${plaque.subjectType ? `<span class="text-[10px] text-gray-600 font-semibold bg-gray-100 px-2 py-0.5 rounded-full inline-block">${plaque.subjectType}</span>` : ''}
-                                        ${plaque.category ? `<span class="text-[10px] text-gray-600 font-semibold bg-gray-100 px-2 py-0.5 rounded-full inline-block">${plaque.category}</span>` : ''}
-                                    </div>
-                                </div>
-                            </div>
-                            <label class="flex items-center gap-2 cursor-pointer select-none">
-                                <span id="txt-${plaque.id}" class="text-xs font-bold uppercase ${isSel ? 'text-red-600' : 'text-gray-400 group-hover:text-gray-600'}">${isSel ? 'Remove' : 'Keep'}</span>
-                                <input type="checkbox" ${isSel ? 'checked' : ''} onchange="app.toggleRemove('${plaque.id}', this.checked)" class="w-5 h-5 text-red-600 border-gray-300 rounded focus:ring-red-500">
-                            </label>
+                                    <div class="flex justify-between items-start mb-2">
+                <div class="flex gap-2 items-center">
+                    <div class="${bg} text-white w-8 h-8 flex items-center justify-center rounded-full font-bold shadow-sm flex-shrink-0">
+                        ${badge}
+                    </div>
+                    <div class="flex flex-col">
+                        <span class="text-xs text-gray-400 font-mono uppercase tracking-wide">${label}</span>
+                        <div class="flex flex-wrap gap-1 mt-1">
+                            ${plaque.subjectType
+                                ? `<span class="text-[10px] text-gray-600 font-semibold bg-gray-100 px-2 py-0.5 rounded-full inline-block">${plaque.subjectType}</span>`
+                                : ''}
+                            ${plaque.category
+                                ? `<span class="text-[10px] text-gray-600 font-semibold bg-gray-100 px-2 py-0.5 rounded-full inline-block">${plaque.category}</span>`
+                                : ''}
                         </div>
+                    </div>
+                </div>
+
+                <div class="flex flex-col items-end gap-2">
+                    ${plaque.imageUrl ? `
+                        <img
+                            src="${plaque.imageUrl}"
+                            alt="${plaque.title}"
+                            class="w-16 h-16 rounded-full object-cover border border-gray-200 shadow-sm"
+                            loading="lazy"
+                        >
+                    ` : ''}
+                    <label id="lbl-${plaque.id}" class="flex items-center gap-2 cursor-pointer select-none">
+                        <span
+                            id="txt-${plaque.id}"
+                            class="text-xs font-bold uppercase ${isSel ? 'text-red-600' : 'text-gray-400 group-hover:text-gray-600'}"
+                        >
+                            ${isSel ? 'Remove' : 'Keep'}
+                        </span>
+                        <input
+                            type="checkbox"
+                            ${isSel ? 'checked' : ''}
+                            onchange="app.toggleRemove('${plaque.id}', this.checked)"
+                            class="w-5 h-5 text-red-600 border-gray-300 rounded focus:ring-red-500"
+                        >
+                    </label>
+                </div>
+            </div>
+
 
                         <h3 class="text-lg font-bold text-gray-900 leading-tight mb-2 mt-2 pr-2">${plaque.title}</h3>
                         <div class="flex items-start text-gray-500 text-sm mb-3">
