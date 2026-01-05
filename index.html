@@ -312,6 +312,7 @@
                       item.description ||
                       item.subjects ||
                       'No description available.',
+                     imageUrl: item.lead_subject_image || item.image || null,
                     wikipediaUrl: item.lead_subject_wikipedia || null
                 }));
             },
