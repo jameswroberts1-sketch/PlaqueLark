@@ -306,6 +306,8 @@
                     longitude: parseFloat(item.longitude),
                     address: item.address || '',
                     bio: item.lead_subject_bio || '',
+                    imageUrl: item.lead_subject_image || '',
+                    inscription: item.inscription || '',
                     summary:
                       item.inscription ||
                       item.summary ||
@@ -1138,7 +1140,15 @@ const nearby = filtered.filter(p =>
                             <span class="mr-1 mt-0.5">${Icons.MapPin}</span>
                             <span class="font-medium">${plaque.address}</span>
                         </div>
-                        <p class="text-gray-600 text-sm leading-relaxed mb-4">${plaque.summary}</p>
+                        ${
+                            plaque.inscription
+                                ? `<p class="text-gray-600 text-sm leading-relaxed mb-4">
+                                        <span class="font-semibold">Plaque inscription:</span>
+                                        ${plaque.inscription}
+                                   </p>`
+                                : `<p class="text-gray-600 text-sm leading-relaxed mb-4">${plaque.summary}</p>`
+                        }
+
 
                         ${plaque.wikipediaUrl ? `
                         <div class="mb-4 bg-gray-50 p-3 rounded-lg border border-gray-100 text-sm">
